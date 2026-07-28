@@ -1,5 +1,8 @@
 """
 Load Service.
+
+Handles loading data into
+Bronze, Silver, and Gold layers.
 """
 
 import logging
@@ -52,25 +55,6 @@ class LoadService:
     # Silver Layer
     # --------------------------------------------------
 
-    def delete_silver_snapshot(self, snapshot_date):
-
-        sql = text("""
-            DELETE
-            FROM silver.crypto_market_clean
-            WHERE snapshot_date = :snapshot_date
-        """)
-
-        with self.database.engine.begin() as connection:
-
-            connection.execute(
-                sql,
-                {"snapshot_date": snapshot_date}
-            )
-
-        self.logger.info(
-            f"Deleted existing Silver snapshot: {snapshot_date}"
-        )
-
     def load_silver(self, dataframe):
 
         with self.database.engine.begin() as connection:
@@ -87,6 +71,61 @@ class LoadService:
         )
 
         self.logger.info("Silver layer loaded successfully.")
+
+    # --------------------------------------------------
+    # Gold Layer
+    # --------------------------------------------------
+
+    def load_gold_market_summary(self, dataframe):
+
+        with self.database.engine.begin() as connection:
+
+            connection.execute(
+                text("TRUNCATE TABLE gold.market_summary")
+            )
+
+        self.database.load_dataframe(
+            dataframe,
+            table_name="market_summary",
+            schema="gold",
+            if_exists="append"
+        )
+
+        self.logger.info("Gold Market Summary loaded successfully.")
+
+    def load_gold_top10(self, dataframe):
+
+        with self.database.engine.begin() as connection:
+
+            connection.execute(
+                text("TRUNCATE TABLE gold.top10_coins")
+            )
+
+        self.database.load_dataframe(
+            dataframe,
+            table_name="top10_coins",
+            schema="gold",
+            if_exists="append"
+        )
+
+        self.logger.info("Gold Top 10 Market Cap loaded successfully.")
+
+    def load_gold_market_trends(self, dataframe):
+
+        with self.database.engine.begin() as connection:
+
+            connection.execute(
+                text("TRUNCATE TABLE gold.market_trends")
+            )
+
+        self.database.load_dataframe(
+            dataframe,
+            table_name="market_trends",
+            schema="gold",
+            if_exists="append"
+        )
+
+        self.logger.info("Gold Market Trends loaded successfully.")
 
     # --------------------------------------------------
     # Warehouse Statistics

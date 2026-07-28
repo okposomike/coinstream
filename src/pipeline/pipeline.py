@@ -10,6 +10,8 @@ AWS S3
 Bronze Layer
         ↓
 Silver Layer
+        ↓
+Gold Layer
 """
 
 import logging
@@ -19,6 +21,7 @@ from src.etl.transform import TransformService
 from src.etl.validate import ValidationService
 from src.etl.load import LoadService
 from src.etl.silver import SilverService
+from src.etl.gold import GoldService
 
 from src.database.warehouse import WarehouseManager
 from src.storage.s3_service import S3Service
@@ -37,7 +40,9 @@ class CoinStreamPipeline:
         self.validator = ValidationService()
 
         self.loader = LoadService()
+
         self.silver = SilverService()
+        self.gold = GoldService()
 
         self.warehouse = WarehouseManager()
 
@@ -51,21 +56,21 @@ class CoinStreamPipeline:
             self.logger.info("CoinStream Pipeline Started")
             self.logger.info("=" * 60)
 
-            # -----------------------------------------
+            # --------------------------------------------------
             # Initialize Warehouse
-            # -----------------------------------------
+            # --------------------------------------------------
 
             self.warehouse.initialize()
 
-            # -----------------------------------------
+            # --------------------------------------------------
             # Extract
-            # -----------------------------------------
+            # --------------------------------------------------
 
             filename, raw_data = self.extractor.extract_market_data()
 
-            # -----------------------------------------
+            # --------------------------------------------------
             # Archive Raw JSON
-            # -----------------------------------------
+            # --------------------------------------------------
 
             self.logger.info("Uploading raw data to AWS S3...")
 
@@ -75,23 +80,23 @@ class CoinStreamPipeline:
                 f"Raw data archived successfully: {s3_key}"
             )
 
-            # -----------------------------------------
+            # --------------------------------------------------
             # Transform
-            # -----------------------------------------
+            # --------------------------------------------------
 
             dataframe = self.transformer.transform_market_data(raw_data)
 
-            # -----------------------------------------
+            # --------------------------------------------------
             # Validate
-            # -----------------------------------------
+            # --------------------------------------------------
 
             dataframe, report = self.validator.validate(dataframe)
 
             snapshot_date = dataframe["snapshot_date"].iloc[0]
 
-            # -----------------------------------------
-            # Incremental Bronze
-            # -----------------------------------------
+            # --------------------------------------------------
+            # Bronze Layer
+            # --------------------------------------------------
 
             self.logger.info("Checking historical warehouse...")
 
@@ -105,11 +110,13 @@ class CoinStreamPipeline:
                     f"Snapshot {snapshot_date} already exists."
                 )
 
-                self.logger.info("Skipping Bronze load.")
+                self.logger.info(
+                    "Skipping Bronze load."
+                )
 
-            # -----------------------------------------
-            # Build Silver Layer
-            # -----------------------------------------
+            # --------------------------------------------------
+            # Silver Layer
+            # --------------------------------------------------
 
             self.logger.info("=" * 60)
             self.logger.info("Building Silver Layer")
@@ -119,28 +126,64 @@ class CoinStreamPipeline:
 
             self.loader.load_silver(silver_df)
 
-            self.logger.info("Silver layer refreshed successfully.")
+            self.logger.info(
+                "Silver layer refreshed successfully."
+            )
 
-            # -----------------------------------------
-            # Statistics
-            # -----------------------------------------
+            # --------------------------------------------------
+            # Gold Layer
+            # --------------------------------------------------
+
+            self.logger.info("=" * 60)
+            self.logger.info("Building Gold Layer")
+            self.logger.info("=" * 60)
+
+            (
+                market_summary_df,
+                top10_df,
+                market_trends_df
+            ) = self.gold.build()
+
+            self.loader.load_gold_market_summary(
+                market_summary_df
+            )
+
+            self.loader.load_gold_top10(
+                top10_df
+            )
+
+            self.loader.load_gold_market_trends(
+                market_trends_df
+            )
+
+            self.logger.info(
+                "Gold layer refreshed successfully."
+            )
+
+            # --------------------------------------------------
+            # Warehouse Statistics
+            # --------------------------------------------------
 
             self.loader.print_statistics()
 
-            # -----------------------------------------
-            # Report
-            # -----------------------------------------
+            # --------------------------------------------------
+            # Validation Report
+            # --------------------------------------------------
 
             PipelineReport.print(report)
 
             self.logger.info("=" * 60)
-            self.logger.info("CoinStream Pipeline Completed Successfully")
+            self.logger.info(
+                "CoinStream Pipeline Completed Successfully"
+            )
             self.logger.info("=" * 60)
 
             return dataframe
 
         except Exception as error:
 
-            self.logger.exception(f"Pipeline Failed: {error}")
+            self.logger.exception(
+                f"Pipeline Failed: {error}"
+            )
 
             raise
