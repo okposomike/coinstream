@@ -4,7 +4,8 @@ CoinStream Entry Point.
 
 import logging
 
-from src.etl.extract import ExtractService
+from src.pipeline.pipeline import CoinStreamPipeline
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,24 +15,15 @@ logging.basicConfig(
 
 def main():
 
-    extractor = ExtractService()
+    pipeline = CoinStreamPipeline()
 
-    filename, data = extractor.extract_market_data()
+    dataframe = pipeline.run()
 
-    print()
+    print("\n")
 
-    print("=" * 60)
-
-    print("CoinStream Extraction Successful")
-
-    print("=" * 60)
-
-    print(f"\nRecords Extracted : {len(data)}")
-
-    print(f"Raw File Saved   : {filename}")
-
-    print()
+    print(dataframe.head())
 
 
 if __name__ == "__main__":
+
     main()
