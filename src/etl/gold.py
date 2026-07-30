@@ -47,7 +47,7 @@ class GoldService:
         df = dataframe.copy()
 
         # -------------------------------------------------
-        # Market Summary
+        # Market Summary (Historical)
         # -------------------------------------------------
 
         market_summary = (
@@ -67,6 +67,8 @@ class GoldService:
                 )
             )
             .reset_index()
+            .sort_values("snapshot_date")
+            .reset_index(drop=True)
         )
 
         market_summary[
@@ -90,17 +92,15 @@ class GoldService:
         )
 
         # -------------------------------------------------
-        # Top 10 Coins
+        # Top 10 Coins (Historical)
         # -------------------------------------------------
 
-        latest_snapshot = df["snapshot_date"].max()
-
         top10 = (
-            df[df["snapshot_date"] == latest_snapshot]
-            .sort_values(
-                "market_cap",
-                ascending=False
+            df.sort_values(
+                ["snapshot_date", "market_cap"],
+                ascending=[True, False]
             )
+            .groupby("snapshot_date", group_keys=False)
             .head(10)
             .reset_index(drop=True)
         )
@@ -110,7 +110,7 @@ class GoldService:
         )
 
         # -------------------------------------------------
-        # Historical Market Trends
+        # Market Trends (Historical)
         # -------------------------------------------------
 
         market_trends = (
