@@ -25,3 +25,10 @@ data/raw/
 aws/
 awscliv2.zip
 amazon-ssm-agent.deb
+
+# logs
+*.log
+pipeline.log
+
+# local helper scripts
+run_pipeline.sh
